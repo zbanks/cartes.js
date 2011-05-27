@@ -1,0 +1,9 @@
+h1= bot.name
+    - if (bot.uid == session.uid)
+        div
+          form(action='#', method='POST')
+            textarea(cols='80', rows='10', name='code')= bot.code
+            br
+            input(type='submit', value='Save')
+    - else
+        div (Code unavailable)

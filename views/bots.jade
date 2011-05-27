@@ -1,0 +1,15 @@
+h1 Bots
+- each bot in bots
+    div.bot
+        h2
+            a(href='/code/'+bot.bid)= bot.name 
+        pre= bot.code
+
+div.newbot
+    h2 New Bot
+    form(action='#', method='POST')
+        label(for='newname') Bot Name
+        input(type='text', name='name')
+        
+        input(type='submit', value='Create')
+        
