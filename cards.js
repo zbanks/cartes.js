@@ -1,3 +1,5 @@
+var _ = require("underscore");
+
 // Globals 
 
 ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "J", "Q", "K"];
@@ -6,6 +8,10 @@ suits = ["S", "H", "C", "D"];
 // Card
 
 function Card(rank, suit){
+    if(!suit){
+        suit = Math.floor(rank / ranks.length);
+        rank %= ranks.length;
+    }
     this.rank = rank;
     this.suit = suit;
 }
@@ -14,15 +20,30 @@ Card.prototype.toString = function(){
     return ranks[this.rank] + "-" + suits[this.suit];
 }
 
-// Hand extends Array
-// TODO fix
+Card.prototype.valueOf = function(){
+    return this.rank + ranks.length * this.suit;
+}
 
-var Hand = Array;
+// CardSet
 
-// Pile extends Hand
-// TODO fix
-
-var Pile = Hand;
+function CardSet(cs){
+    if(!cs){
+        this.cards = [];
+    }else if(cs instanceof CardSet){
+        this.cards = cs.cards;
+    }else if(_.isArray(cs)){
+        this.cards = cs;
+    }
+    
+    this.hasCard = function(card){
+        return _.include(this.cards, card);
+    }
+    
+    this.remove = function(card){
+        this.cards = _.without(this.cards, card);
+        return card;
+    }
+}
 
 // Deck
 
@@ -50,11 +71,19 @@ function Deck(){
         for(var i = 0; i < n; i++){
             cs.push(cards.pop());
         }
-        return Hand(cs);
+        return CardSet(cs);
     }
     
     this.deal = function(hands, amt){
-        
+        //TODO
     }
     
+}
+
+module.exports = {
+    ranks: ranks,
+    suits: suits,
+    Card: Card,
+    CardSet: CardSet,
+    Deck: Deck
 }

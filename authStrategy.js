@@ -23,6 +23,7 @@ module.exports = function(options){
         
         req.session.login = false;
         req.session.user = null;
+        req.session.uid = null;
         //req.session.regenerate();
         res.redirect(redirectUrl);
     }
@@ -36,6 +37,8 @@ module.exports = function(options){
                     if(err || !uid){
                         return executionScope.fail(callback);
                     }
+                    uid = parseInt(uid.toString("ascii"), 10);
+                   
                     redis.get(db.build("uid", uid, "password"), function(err, pwhash){
                         if(!err && pwhash && db.check_hash(request.body.password, pwhash.toString("ascii"))) {
                             //request.session.regenerate();

@@ -10,6 +10,8 @@ var RedisStore = require('connect-redis');
 var authStrategy = require('./authStrategy');
 var db = require("./redisdb");
 var Sandbox = require("sandbox");
+var _ = require("underscore");
+var cards = require("./cards");
 
 var app = module.exports = express.createServer();
 var redis = db.redis;
@@ -118,8 +120,79 @@ app.all("/signup", function(req, res){
     });
 });
 
-app.get("/code", requireAuth, function(req, res){
-    req.authenticate(['dbAuth
+app.post("/bots", requireAuth, function(req, res, next){
+    if(req.body.name){
+        var bot = {};
+        bot.name = req.body.name;
+        bot.uid = req.session.uid;
+        bot.code = "function(a, b, c){\n\treturn a + b + c;\n}";
+        redis.incr("global:nextBotId", function(err, bid){
+            if(err) return;
+            bot.bid = bid;
+            db.setdict(db.build("bid", bid), bot, function(err){
+                if(err) return;
+                redis.sadd(db.build("uid", req.session.uid, "bots"), bid, function(err){
+                    if(err) return;
+                    next();
+                });
+            });
+        });
+    }
+});
+app.all("/bots", requireAuth, function(req, res){
+    redis.smembers(db.build("uid", req.session.uid, "bots"), function(err, bids){
+        if(!err){
+            var bots = [];
+            var botGenerator = function(){
+                console.log(bots, bids);
+                if(bots.length != bids.length){
+                    db.getdict(
+                        db.build("bid", bids[bots.length].toString("ascii")),
+                        ["name", "code", "bid", "uid"], 
+                        function(err, res){
+                            if(err) return;
+                            botGenerator();                  
+                        }
+                    );
+                }else{
+                    res.render("bots", {
+                        title: "Bots",
+                        user: req.session.user,
+                        bots: bots
+                    });
+                }
+            }
+            botGenerator();
+        }      
+    });
+});
+
+app.post("/code/:bid", requireAuth, function(req, res, next){
+    if(!req.body.code) return next();
+    db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"],
+        function(err, bot){
+            if(err) return next();
+            if(bot.uid != req.session.uid) return next();
+            bot.code = req.body.code;
+            db.setdict(db.build("bid", req.params.bid), bot, function(err){
+                if(err) return;
+                next();
+            });
+        }
+   );
+});
+
+app.all("/code/:bid", requireAuth, function(req, res){
+    db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"],
+        function(err, bot){
+            if(err) return;
+            res.render("code", {
+                title: "View Code",
+                session: req.session,
+                bot: bot
+            });
+        }
+   );
 });
 
 app.post("/exec", requireAuth, function(req, res, next){
