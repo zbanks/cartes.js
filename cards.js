@@ -47,16 +47,9 @@ function CardSet(cs){
 
 // Deck
 
-function Deck(){
+function Deck(numdecks){
     var cards = [];
-    
-    for(var s = 0; s < suits.length; s++){
-        for(var r = 0; r < ranks.length; r++){
-            cards.push(new Card(r, s));
-        }
-    }
-    
-    this.shuffle(5);
+    numdecks = numdecks || 1;
     
     this.shuffle = function(n){
         n = n || 3;
@@ -65,25 +58,64 @@ function Deck(){
         }
     }
     
-    this.pop = function(n){ // TODO: hand, n
+    this.pop = function(n, cs){ // TODO: hand, n
         n = n || 1;
-        var cs = [];
+        cs = cs || [];
         for(var i = 0; i < n; i++){
             cs.push(cards.pop());
         }
-        return CardSet(cs);
+        return cs;
     }
     
-    this.deal = function(hands, amt){
-        //TODO
+    this.deal = function(numhands, amt){
+        amt = amt || this.cards.length;
+        var hands = [];
+        for(var i = 0, h = 0; i < this.cards.length && i < amt * numhands; h = ++h % numhands, i++){
+            this.pop(1, hands[h]);
+        }
+        return hands;
     }
     
+    
+    for(var n = 0; n < numdecks; n++){
+        for(var s = 0; s < suits.length; s++){
+            for(var r = 0; r < ranks.length; r++){
+                cards.push(new Card(r, s));
+            }
+        }
+    }
+    
+    this.shuffle(5);
+    
+}
+
+function Player(uid, code){
+    this.uid = uid;
+    
+    this.run = function(args){
+        if(args[4])
+            return false;
+        else
+            return [0];
+    }
+}
+
+function mapperGenerator(fn){
+    return function(xs){
+        if(_.isArray(xs)){
+            return _.map(xs, function(x){ return fn(x); });
+        }else{
+            return fn(xs);
+        }
+    };
 }
 
 module.exports = {
     ranks: ranks,
     suits: suits,
     Card: Card,
-    CardSet: CardSet,
-    Deck: Deck
+    Deck: Deck,
+    Player: Player,
+    intsToCards: mapperGenerator(function(x){ return new Card(x); }),
+    cardsToInts: mapperGenerator(function(x){ return x.valueOf(); })
 }

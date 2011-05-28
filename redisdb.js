@@ -46,7 +46,7 @@ module.exports = {
     getdict : function(prefix, keys, callback){
         redis.mget.apply(redis, _.map(keys, function(k){return prefix + ":" + k;}).concat(function(err,  vals){
             var res = {};
-            console.log(arguments);
+            //console.log(arguments);
             if(!err)
                 _.each(_.zip(keys, vals), function(kv){  
                     if(kv[1].length < 32){

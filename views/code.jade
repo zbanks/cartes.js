@@ -5,5 +5,7 @@ h1= bot.name
             textarea(cols='80', rows='10', name='code')= bot.code
             br
             input(type='submit', value='Save')
+          form(action='#', method='GET')
+            input(type='submit', name='run', value='Run')
     - else
         div (Code unavailable)

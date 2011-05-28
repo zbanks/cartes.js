@@ -120,6 +120,15 @@ app.all("/signup", function(req, res){
     });
 });
 
+app.all("/login", function(req, res){
+    return res.redirect("/auth/form_callback");
+});
+
+app.all("/logout", function(req, res){
+    req.session.destroy();
+    res.redirect("/login");
+});
+
 app.post("/bots", requireAuth, function(req, res, next){
     if(req.body.name){
         var bot = {};
@@ -141,58 +150,87 @@ app.post("/bots", requireAuth, function(req, res, next){
 });
 app.all("/bots", requireAuth, function(req, res){
     redis.smembers(db.build("uid", req.session.uid, "bots"), function(err, bids){
-        if(!err){
-            var bots = [];
-            var botGenerator = function(){
-                console.log(bots, bids);
-                if(bots.length != bids.length){
-                    db.getdict(
-                        db.build("bid", bids[bots.length].toString("ascii")),
-                        ["name", "code", "bid", "uid"], 
-                        function(err, res){
-                            if(err) return;
-                            botGenerator();                  
-                        }
-                    );
-                }else{
-                    res.render("bots", {
-                        title: "Bots",
-                        user: req.session.user,
-                        bots: bots
-                    });
-                }
+        if(err) return;
+        var bots = [];
+        var botGenerator = function(){
+            console.log(bots, bids, bots.length, bids.length);
+            if(bots.length != bids.length){
+                db.getdict(
+                    db.build("bid", bids[bots.length].toString("ascii")),
+                    ["name", "code", "bid", "uid"], 
+                    function(err, resp){
+                        if(err) return;
+                        bots.push(resp);
+                        botGenerator();                  
+                    }
+                );
+            }else{
+                res.render("bots", {
+                    title: "Bots",
+                    user: req.session.user,
+                    bots: bots
+                });
             }
-            botGenerator();
-        }      
+        }
+        botGenerator();
     });
+});
+
+app.all("/code/:id", requireAuth, function(req, res, next){
+    if(!req.query.run) next();
+    
+    db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"],
+        function(err, bot){
+            if(err) return;
+            res.local("bot", bot);
+            if(parseInt(bot.uid.toString("ascii"), 10) == req.session.uid){
+                s = new Sandbox();
+                s.run(bot.code, function(output){
+                    req.flash("info", output.result);
+                    next();
+                });
+            }else{
+                next();
+            }
+        }
+   );
 });
 
 app.post("/code/:bid", requireAuth, function(req, res, next){
     if(!req.body.code) return next();
-    db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"],
-        function(err, bot){
-            if(err) return next();
-            if(bot.uid != req.session.uid) return next();
-            bot.code = req.body.code;
-            db.setdict(db.build("bid", req.params.bid), bot, function(err){
-                if(err) return;
-                next();
-            });
-        }
-   );
+    var action = function(err, bot){
+        if(err) return next();
+        res.local("bot", bot);
+        if(bot.uid != req.session.uid) return next();
+        bot.code = req.body.code;
+        db.setdict(db.build("bid", req.params.bid), bot, function(err){
+            if(err) return;
+            next();
+        });
+    }
+    var b = res.local("bot")
+    if(b){
+        action(null, b);
+    }else{
+        db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"], action);
+    }
 });
 
 app.all("/code/:bid", requireAuth, function(req, res){
-    db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"],
-        function(err, bot){
-            if(err) return;
-            res.render("code", {
-                title: "View Code",
-                session: req.session,
-                bot: bot
-            });
-        }
-   );
+    var action = function(err, bot){
+        if(err) return;
+        res.local("bot", bot);
+        res.render("code", {
+            title: "View Code",
+            session: req.session,
+        });
+    }
+    var b = res.local("bot");
+    if(b){
+        action(null, b);
+    }else{
+        db.getdict(db.build("bid", req.params.bid), ["name", "code", "bid", "uid"], action);
+    }
 });
 
 app.post("/exec", requireAuth, function(req, res, next){
