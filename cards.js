@@ -1,9 +1,22 @@
 var _ = require("underscore");
+var Sandbox = require("sandbox");
 
 // Globals 
 
-ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "J", "Q", "K"];
+ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 suits = ["S", "H", "C", "D"];
+dispSuits = ["♠", "♡", "♣", "♢"];
+
+function mapperGenerator(fn){
+    ax = function(xs){
+        if(_.isArray(xs)){
+            return _.map(xs, function(x){ return ax(x); });
+        }else{
+            return fn(xs);
+        }
+    };
+    return ax;
+}
 
 // Card
 
@@ -16,13 +29,20 @@ function Card(rank, suit){
     this.suit = suit;
 }
 
-Card.prototype.toString = function(){
-    return ranks[this.rank] + "-" + suits[this.suit];
-}
-
 Card.prototype.valueOf = function(){
     return this.rank + ranks.length * this.suit;
 }
+
+Card.prototype.disp = function(){
+    return ranks[this.rank] +  dispSuits[this.suit];
+}
+
+Card.prototype.toString = Card.prototype.disp;
+
+
+
+var intsToCards = mapperGenerator(function(x){ return new Card(x); });
+var cardsToInts = mapperGenerator(function(x){ return x.valueOf(); });
 
 // CardSet
 
@@ -54,7 +74,7 @@ function Deck(numdecks){
     this.shuffle = function(n){
         n = n || 3;
         for(var i = 0; i < n; i++){
-            cards.sort(function(){return Math.random();});
+            cards.sort(function(){return 0.5 - Math.random();});
         }
     }
     
@@ -68,9 +88,10 @@ function Deck(numdecks){
     }
     
     this.deal = function(numhands, amt){
-        amt = amt || this.cards.length;
+        amt = amt || cards.length;
         var hands = [];
-        for(var i = 0, h = 0; i < this.cards.length && i < amt * numhands; h = ++h % numhands, i++){
+        for(var i = 0, h = 0; cards.length && i < amt * numhands; h = ++h % numhands, i++){
+            hands[h] = hands[h] || [];
             this.pop(1, hands[h]);
         }
         return hands;
@@ -85,30 +106,54 @@ function Deck(numdecks){
         }
     }
     
+    //console.log(cards);
+    
     this.shuffle(5);
     
+
 }
 
-function Player(uid, code){
+function Player(uid, code, trusted){
     this.uid = uid;
+    this.code = code;
     
-    this.run = function(args){
-        if(args[4])
-            return false;
-        else
-            return [0];
+    
+    this.run = function(args, callback){
+        args.hand = cardsToInts(args.hand);
+        
+        if(args.claim){
+            var codeaugment = "\n\ncheck(" + JSON.stringify(args) + ");";
+        }else{
+            var codeaugment = "\n\nplay(" + JSON.stringify(args) + ");";
+        }
+        
+        if(!trusted){
+            sbox = new Sandbox({
+                timeout: 1000
+            });
+            
+            //console.log(this.code + codeaugment);
+            sbox.run(this.code + codeaugment, function(output){
+                console.log(output);
+                if(output.result == "TimeoutError"){
+                    callback([0]);
+                }else{
+                    output.result = JSON.parse(output.result);
+                    args.data = output.result.data;
+                    callback(output.result.action);
+                }
+            });
+        }else{
+            // If the bot is "trusted", can be run directly via eval
+            // Significantly quicker, but possibly evil!!!!
+            result = eval(this.code + codeaugment);
+            args.data = result.data;
+            callback(result.action);
+        }
     }
 }
 
-function mapperGenerator(fn){
-    return function(xs){
-        if(_.isArray(xs)){
-            return _.map(xs, function(x){ return fn(x); });
-        }else{
-            return fn(xs);
-        }
-    };
-}
+
 
 module.exports = {
     ranks: ranks,
@@ -116,6 +161,6 @@ module.exports = {
     Card: Card,
     Deck: Deck,
     Player: Player,
-    intsToCards: mapperGenerator(function(x){ return new Card(x); }),
-    cardsToInts: mapperGenerator(function(x){ return x.valueOf(); })
+    intsToCards: intsToCards,
+    cardsToInts: cardsToInts
 }

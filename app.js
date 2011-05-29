@@ -12,6 +12,7 @@ var db = require("./redisdb");
 var Sandbox = require("sandbox");
 var _ = require("underscore");
 var cards = require("./cards");
+var games = require("./games");
 
 var app = module.exports = express.createServer();
 var redis = db.redis;
@@ -58,12 +59,6 @@ app.get('/', function(req, res){
     req.session.count = (req.session.count || 0) + 1;
     res.render("index", {
         title: "Express " + req.session.count,
-    });
-});
-
-app.get('/test', requireAuth, function(req, res){
-    res.render('index', {
-        title: 'Yay, ' + req.session.user + '!'
     });
 });
 
@@ -175,7 +170,7 @@ app.all("/bots", requireAuth, function(req, res){
         botGenerator();
     });
 });
-
+/*
 app.all("/code/:id", requireAuth, function(req, res, next){
     if(!req.query.run) next();
     
@@ -195,6 +190,7 @@ app.all("/code/:id", requireAuth, function(req, res, next){
         }
    );
 });
+*/
 
 app.post("/code/:bid", requireAuth, function(req, res, next){
     if(!req.body.code) return next();
@@ -248,6 +244,66 @@ app.post("/exec", requireAuth, function(req, res, next){
 app.all("/exec", requireAuth, function(req, res){
     res.render("exec", {
         title: "Execute JS"
+    });
+});
+
+app.get("/game/:players", function(req, res){
+    var bids = req.params.players.split(":");
+    var bots = [];
+    var trace = "";
+    var botGenerator = function(){
+        if(bots.length != bids.length){
+            db.getdict(
+                db.build("bid", bids[bots.length].toString("ascii")),
+                ["name", "code", "bid", "uid"], 
+                function(err, resp){
+                    if(err) return;
+                    bots.push(resp);
+                    botGenerator();                  
+                }
+            );
+        }else{
+            
+            var players = [];
+            for(var i = 0; i < bots.length; i++){
+                players.push(new cards.Player(bots[i].bid, bots[i].code, true));
+            }
+            bsg = new games.BS();
+            bsg.init(players);
+            bsg.playOut(function(){
+                console.log(_.pluck(bsg.hands, "length"));
+                console.log("winner", bsg.winner());
+                if(bsg.winner() != -1){
+                    var botname = bots[bsg.winner()].name;
+                }else{
+                    var botname = "None";
+                }
+                res.render("game", {
+                    title: "Winner: " + botname + " (" + bsg.winner() + ")",
+                    trace: trace
+                });
+            }, function(){
+                    trace += Array.prototype.slice.call(arguments).join(" ") + "\n<br>\n";
+            });
+        }
+    }
+    botGenerator();
+});
+
+app.get("/test", function(req, res){
+    db.getdict(db.build("bid", "1"), ["name", "code", "bid", "uid"], function(err, bot){
+        if(err) return;
+        
+        var pls = _.map(_.range(4), function(x){ return new cards.Player(x, bot.code, false); });
+        var bsg = new games.BS();
+        bsg.init(pls); 
+        bsg.playOut(function(){
+            console.log(_.pluck(bsg.hands, "length"));
+            console.log("winner", bsg.winner());
+            res.render("index", {
+                title: "Winner: " + bsg.winner()
+            });
+        });
     });
 });
 
