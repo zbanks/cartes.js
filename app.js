@@ -253,20 +253,29 @@ app.get("/game/:players", function(req, res){
     var trace = "";
     var botGenerator = function(){
         if(bots.length != bids.length){
-            db.getdict(
-                db.build("bid", bids[bots.length].toString("ascii")),
-                ["name", "code", "bid", "uid"], 
-                function(err, resp){
-                    if(err) return;
-                    bots.push(resp);
-                    botGenerator();                  
-                }
-            );
+            if(bids[bots.length] == 0){
+                bots.push(["Human", "", "0", "0"]);
+                botGenerator();
+            }else{
+                db.getdict(
+                    db.build("bid", bids[bots.length].toString("ascii")),
+                    ["name", "code", "bid", "uid"], 
+                    function(err, resp){
+                        if(err) return;
+                        bots.push(resp);
+                        botGenerator();                  
+                    }
+                );
+            }
         }else{
             
             var players = [];
             for(var i = 0; i < bots.length; i++){
-                players.push(new cards.Player(bots[i].bid, bots[i].code, true));
+                if(bots[i].bid){
+                    players.push(new cards.Player(bots[i].bid, bots[i].code, true));
+                }else{
+                    players.push(new cards.HumanPlayer());
+                }
             }
             bsg = new games.BS();
             bsg.init(players);
@@ -283,7 +292,7 @@ app.get("/game/:players", function(req, res){
                     trace: trace
                 });
             }, function(){
-                    trace += Array.prototype.slice.call(arguments).join(" ") + "\n<br>\n";
+                    trace += Array.prototype.slice.call(arguments).join(" ") + "\n";
             });
         }
     }

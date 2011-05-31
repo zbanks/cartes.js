@@ -6,13 +6,15 @@ script
     var datadiv = document.getElementById("data");
     data = datadiv.innerHTML.split("\\n");
     var output = "";
+    // datadiv.innerHTML = "";
+    
     for(var i = 0; i < data.length; i++){
         if(data[i].indexOf("&gt;") > 0 && data[i].indexOf("&gt;") < 5){
             // Cards in pile
-            output += "<div class='state'><span class='pile'>" + data[i].split(">")[0] + "</span>";
+            output += "<div class='state'><span class='pile'>" + data[i].split("&gt;")[0] + "</span>";
         }else if(data[i].indexOf(":") > 0){
-            i = 1;
-            output += "<div class='hand0'>" + data[i].replace(/:/g, function(){return "</div><div class='hand" + i++ +"'>"}) + "</div>";
+            j = 1;
+            output += "<div class='hand0'>" + data[i].replace(/:/g, function(){return "</div><div class='hand" + j++ +"'>"}) + "</div>";
         }else if(data[i].indexOf("Play") == 0){
             output += "<div class='play'>" + data[i] + "</div>";
         }else if(data[i].indexOf("BS") == 0){

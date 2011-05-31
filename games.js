@@ -134,8 +134,10 @@ function BSGame(){
                                 //console.log(that.turn, "bs" , that.lastLie);
                                 logger("BS", i, that.lastLie);
                                 if(that.lastLie){
+                                    console.log(i + " calls BS! -- Caught! (" + that.pile.length + " cards)");
                                     handleBs(that.turn);
                                 }else{
+                                    console.log(i + " calls BS! -- Nope! (" + that.pile.length + " cards)");
                                     handleBs(i);
                                 }
                             }else{

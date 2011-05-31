@@ -1,5 +1,6 @@
 var _ = require("underscore");
 var Sandbox = require("sandbox");
+var Prompt = require("prompt");
 
 // Globals 
 
@@ -153,6 +154,48 @@ function Player(uid, code, trusted){
     }
 }
 
+function HumanPlayer(){
+    this.uid = 0;
+    this.code = "console.log('Human');";
+    this.run = function(args, callback){
+        var easynames = ["Alice", "Bob", "Charlie", "David", "Eliza", "Fred", "G", "H", "I", "J"];
+        
+        var promptmsg = ">";
+        console.log("\n\n");
+        if(args.claim){
+            console.log(easynames[args.turn] + "'s turn. Played " + args.claim + " " + ranks[args.rank] + "'s.");
+            promptmsg = "BS?";
+        }else{
+            console.log("Your turn");
+            promptmsg = "Play " + ranks[args.rank] + "'s:"
+        }
+        console.log("Pile size: " + args.pilesize + "; Remaining cards: " + args.cardsleft);
+        console.log("Your hand: " + _.map(args.hand, function(x){return (new Card(x)).disp();}).join(" "));
+        if(!args.claim){
+            //console.log("raw numbs: " + args.hand.join(" "));
+            console.log("Card no's: " + _.map(_.range(args.hand.length), function(x){ return x < 10 ? x + " " : x.toString(); }).join(" "));
+        }
+        //console.log(args);
+        
+        var handleResponse = function(resp){
+            if(args.claim){
+                v = resp.toLowerCase()[0];
+                if(v == "y" || v == "b" || v == "t"){
+                    return callback(true);
+                }else if(v == "n" || v == "p" || v == "f"){
+                    return callback(false);
+                }else{
+                    Prompt("Huh? " + promptmsg, handleResponse);
+                }
+            }else{
+                v = _.map(resp.split(" "), function(x){return parseInt(x, 10);});
+                return callback(v);
+            }  
+        }
+        Prompt(promptmsg, handleResponse);        
+        
+    }
+}
 
 
 module.exports = {
@@ -161,6 +204,7 @@ module.exports = {
     Card: Card,
     Deck: Deck,
     Player: Player,
+    HumanPlayer: HumanPlayer,
     intsToCards: intsToCards,
     cardsToInts: cardsToInts
 }

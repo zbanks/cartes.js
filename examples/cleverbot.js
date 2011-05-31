@@ -1,5 +1,5 @@
-// Cleverbot.js
-// Always tries to tell the truth, Tricky BSing
+// Liarbot.js
+// Sometimes lies, Tricky BSing
 
 var numcards = [0,0,0,0, 0,0,0,0, 0,0,0,0, 0];
 function getNumcards(hand){
@@ -7,6 +7,18 @@ function getNumcards(hand){
         numcards[hand[i] % 13]++;
     }
 }
+
+function findCard(hand, card, action){
+    offset = action ? action[action.length-1] : 0;
+    for(var i = card; i < 52; i += 13){
+        var p = hand.indexOf(i, offset);
+        if(p != -1){
+            return p;
+        }
+    }
+    return -1;
+}
+
 function check(args){
     var action = false;
     getNumcards(args.hand);
@@ -18,6 +30,8 @@ function check(args){
     }
     return { action: action, data : args.data};
 }
+
+
 // args :: numplayers, turn, rank, hand, pilesize, cardsleft, data, claim
 
 function play(args){
@@ -34,8 +48,21 @@ function play(args){
             action.push(i);
         }
     }
-    if(action.length == 0){
-        action = [0];
+    if(action.length == 0 || (action.length == 1 && Math.random() < 0.3){
+        for(var i = 12; i; i++){
+            if(numcards[args.data.order[i]]){
+                p = findCard(hand, args.data.order[i]);
+                if(p != -1){
+                    action.push(p);
+                    if(numcards[args.data.order[i]] >= 2 && action.length == 1 && Math.random() < 0.7){
+                        p = findCard(hand, args.data.order[i]);
+                        if(p != -1){
+                            action.push(p);
+                        }
+                    }
+                }
+            }
+        }
     }
     args.data.order.splice(0,1);
     args.data.order.push(args.rank);
